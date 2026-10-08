@@ -126,4 +126,64 @@ router.delete("/:id", async (req, res) => {
   }
 });
 
+// AJOUTER UN MEMBRE AU GROUPE
+router.post("/:id/membres", async (req, res) => {
+  try {
+    const { administrateur, utilisateur } = req.body;
+
+    if (
+      !mongoose.isValidObjectId(req.params.id) ||
+      !mongoose.isValidObjectId(administrateur) ||
+      !mongoose.isValidObjectId(utilisateur)
+    ) {
+      return res.status(400).json({ message: "ID invalide" });
+    }
+
+    const group = await Group.findById(req.params.id);
+
+    if (!group) {
+      return res.status(404).json({ message: "Groupe introuvable" });
+    }
+
+    const estAdmin = group.administrateurs.some(
+      id => id.toString() === administrateur
+    );
+
+    if (!estAdmin) {
+      return res.status(403).json({
+        message: "Seul un administrateur peut ajouter un membre"
+      });
+    }
+
+    const user = await User.findById(utilisateur);
+
+    if (!user) {
+      return res.status(404).json({
+        message: "Utilisateur introuvable"
+      });
+    }
+
+    const dejaMembre = group.membres.some(
+      id => id.toString() === utilisateur
+    );
+
+    if (dejaMembre) {
+      return res.status(409).json({
+        message: "Cet utilisateur est déjà membre du groupe"
+      });
+    }
+
+    group.membres.push(utilisateur);
+
+    await group.save();
+
+    res.status(201).json({
+      message: "Membre ajouté avec succès",
+      group
+    });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
 module.exports = router;
